@@ -14,7 +14,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--source",
             type=Path,
-            default=settings.BASE_DIR / "source_data" / "swimplaces_export.csv",
+            default=settings.BASE_DIR / settings.SWIMPLACES_DEFAULT_SOURCE_FILE,
             help="Path to the source CSV file.",
         )
 
