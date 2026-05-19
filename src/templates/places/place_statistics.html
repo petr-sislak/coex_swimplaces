@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Statistiky mist{% endblock %}
+
+{% block content %}
+  <div class="mb-4">
+    <h1 class="h3 mb-1">Statistiky mist</h1>
+    <p class="text-body-secondary mb-0">Prehled importovanych koupacich mist.</p>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <div class="col-md-4">
+      <div class="border rounded p-3">
+        <div class="text-body-secondary">Pocet mist</div>
+        <div class="display-6">{{ statistics.total_count }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-6">
+      <h2 class="h5">Kategorie</h2>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th>Kategorie</th>
+              <th class="text-end">Pocet</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in statistics.category_counts %}
+              <tr>
+                <td>{{ item.category }}</td>
+                <td class="text-end">{{ item.count }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="2" class="text-body-secondary">Zadna data.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <h2 class="h5">Top 10 podle hodnoceni</h2>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th>Misto</th>
+              <th class="text-end">Hodnoceni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for place in statistics.top_rated_places %}
+              <tr>
+                <td><a href="{% url 'places:place-detail' place.external_id %}">{{ place.name }}</a></td>
+                <td class="text-end">{{ place.rating }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="2" class="text-body-secondary">Zadna data.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-4">
+    <h2 class="h5">Top 10 nejvzdalenejsich mist od COexu</h2>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead>
+          <tr>
+            <th>Misto</th>
+            <th>Kategorie</th>
+            <th class="text-end">Vzdalenost</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in statistics.most_distant_places %}
+            <tr>
+              <td><a href="{% url 'places:place-detail' item.place.external_id %}">{{ item.place.name }}</a></td>
+              <td>{{ item.place.category }}</td>
+              <td class="text-end">{{ item.distance_km|floatformat:1 }} km</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="3" class="text-body-secondary">Zadna data.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

@@ -9,6 +9,7 @@ from pydantic import ValidationError
 
 from places.models import SwimPlace
 from places.schemas import PlaceListQuery
+from places.services.statistics import get_swim_place_statistics
 
 
 def place_list(request: HttpRequest) -> HttpResponse:
@@ -57,6 +58,16 @@ def place_detail(request: HttpRequest, external_id: int) -> HttpResponse:
         {
             "place": place,
             "detail_fields": detail_fields,
+        },
+    )
+
+
+def place_statistics(request: HttpRequest) -> HttpResponse:
+    return render(
+        request,
+        "places/place_statistics.html",
+        {
+            "statistics": get_swim_place_statistics(),
         },
     )
 
