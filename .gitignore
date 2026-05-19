@@ -1,0 +1,12 @@
+.venv/
+.uv-cache/
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+*.py[cod]
+db.sqlite3
+.env
+.secrets/local.env
+.DS_Store
+task.md
+/source_data
