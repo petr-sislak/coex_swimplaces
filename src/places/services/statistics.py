@@ -4,13 +4,12 @@ from dataclasses import dataclass
 from decimal import Decimal
 from math import asin, cos, radians, sin, sqrt
 
+from django.conf import settings
 from django.db.models import Count
 
 from places.models import SwimPlace
 
 
-COEX_LATITUDE = Decimal("50.1055756")
-COEX_LONGITUDE = Decimal("14.4789581")
 EARTH_RADIUS_KM = 6371.0088
 
 
@@ -29,6 +28,7 @@ class DistantPlace:
 @dataclass(frozen=True)
 class SwimPlaceStatistics:
     total_count: int
+    limit: int
     category_counts: list[CategoryCount]
     top_rated_places: list[SwimPlace]
     most_distant_places: list[DistantPlace]
@@ -36,11 +36,13 @@ class SwimPlaceStatistics:
 
 def get_swim_place_statistics() -> SwimPlaceStatistics:
     places = SwimPlace.objects.all()
+    limit = settings.SWIMPLACES_STATISTICS_LIMIT
     return SwimPlaceStatistics(
         total_count=places.count(),
+        limit=limit,
         category_counts=get_category_counts(),
-        top_rated_places=list(places.exclude(rating__isnull=True).order_by("-rating", "name")[:10]),
-        most_distant_places=get_most_distant_places(limit=10),
+        top_rated_places=list(places.exclude(rating__isnull=True).order_by("-rating", "name")[:limit]),
+        most_distant_places=get_most_distant_places(limit=limit),
     )
 
 
@@ -60,8 +62,8 @@ def get_most_distant_places(limit: int) -> list[DistantPlace]:
             distance_km=calculate_distance_km(
                 float(place.latitude),
                 float(place.longitude),
-                float(COEX_LATITUDE),
-                float(COEX_LONGITUDE),
+                float(Decimal(settings.SWIMPLACES_COEX_LATITUDE)),
+                float(Decimal(settings.SWIMPLACES_COEX_LONGITUDE)),
             ),
         )
         for place in SwimPlace.objects.all()

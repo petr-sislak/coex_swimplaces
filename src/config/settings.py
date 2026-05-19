@@ -32,6 +32,14 @@ def env_list(name: str, default: list[str] | None = None) -> list[str]:
 
     return [item.strip() for item in value.split(",") if item.strip()]
 
+
+def env_int(name: str, default: int) -> int:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+
+    return int(value)
+
 # Project root. Django source code lives in BASE_DIR / "src".
 BASE_DIR = Path(__file__).resolve().parents[2]
 SRC_DIR = BASE_DIR / "src"
@@ -141,6 +149,13 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# Swimplaces domain settings
+SWIMPLACES_DEFAULT_SOURCE_FILE = os.environ.get("SWIMPLACES_DEFAULT_SOURCE_FILE", "source_data/swimplaces_export.csv")
+SWIMPLACES_COEX_LATITUDE = os.environ.get("SWIMPLACES_COEX_LATITUDE", "50.1055756")
+SWIMPLACES_COEX_LONGITUDE = os.environ.get("SWIMPLACES_COEX_LONGITUDE", "14.4789581")
+SWIMPLACES_STATISTICS_LIMIT = env_int("SWIMPLACES_STATISTICS_LIMIT", default=10)
 
 
 # Celery
