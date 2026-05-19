@@ -4,6 +4,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from django.test import SimpleTestCase, TestCase
+from django.urls import reverse
 
 from places.models import SwimPlace
 from places.services.parsers import merge_descriptions, parse_dog_swimming, parse_swimplace_row
@@ -227,3 +228,77 @@ class SwimPlaceImporterTests(TestCase):
             writer.writerows(rows)
 
         return Path(temp_file.name)
+
+
+class PlaceListViewTests(TestCase):
+    def test_place_list_renders_import_ids_and_names(self) -> None:
+        create_swim_place(external_id=1, import_id="swimplaces:1", name="First place")
+        create_swim_place(external_id=2, import_id="swimplaces:2", name="Second place")
+
+        response = self.client.get(reverse("places:place-list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "swimplaces:1")
+        self.assertContains(response, "First place")
+        self.assertContains(response, "swimplaces:2")
+        self.assertContains(response, "Second place")
+
+    def test_place_list_filters_places_suitable_for_dogs(self) -> None:
+        create_swim_place(external_id=1, import_id="swimplaces:1", name="Dog place", dog_swimming=True)
+        create_swim_place(external_id=2, import_id="swimplaces:2", name="No dog place", dog_swimming=False)
+
+        response = self.client.get(reverse("places:place-list"), {"dog_swimming": "yes"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Dog place")
+        self.assertNotContains(response, "No dog place")
+
+    def test_place_list_filters_places_not_suitable_for_dogs(self) -> None:
+        create_swim_place(external_id=1, import_id="swimplaces:1", name="Dog place", dog_swimming=True)
+        create_swim_place(external_id=2, import_id="swimplaces:2", name="No dog place", dog_swimming=False)
+
+        response = self.client.get(reverse("places:place-list"), {"dog_swimming": "no"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Dog place")
+        self.assertContains(response, "No dog place")
+
+    def test_place_list_filters_places_with_unknown_dog_swimming(self) -> None:
+        create_swim_place(external_id=1, import_id="swimplaces:1", name="Known place", dog_swimming=True)
+        create_swim_place(external_id=2, import_id="swimplaces:2", name="Unknown place", dog_swimming=None)
+
+        response = self.client.get(reverse("places:place-list"), {"dog_swimming": "unknown"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Known place")
+        self.assertContains(response, "Unknown place")
+
+    def test_place_list_ignores_invalid_filter_value(self) -> None:
+        create_swim_place(external_id=1, import_id="swimplaces:1", name="First place", dog_swimming=True)
+        create_swim_place(external_id=2, import_id="swimplaces:2", name="Second place", dog_swimming=False)
+
+        response = self.client.get(reverse("places:place-list"), {"dog_swimming": "invalid"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Filtr nebyl platny")
+        self.assertContains(response, "First place")
+        self.assertContains(response, "Second place")
+
+
+def create_swim_place(
+    *,
+    external_id: int,
+    import_id: str,
+    name: str,
+    dog_swimming: bool | None = None,
+) -> SwimPlace:
+    return SwimPlace.objects.create(
+        external_id=external_id,
+        import_id=import_id,
+        name=name,
+        category="Lake",
+        rating=Decimal("4.20"),
+        latitude=Decimal("50.000000"),
+        longitude=Decimal("14.000000"),
+        dog_swimming=dog_swimming,
+    )
