@@ -36,6 +36,30 @@ CSV_HEADER = [
     "Video",
     "Dog swimming",
 ]
+CSV_UPDATE_HEADER = [
+    "MapoticID",
+    "Latitude",
+    "Longitude",
+    "Name",
+    "Category",
+    "Rating",
+    "Image URL",
+    "Import ID",
+    "Description",
+    "Address",
+    "Web",
+    "E-mail",
+    "Phone number",
+    "Description",
+    "Refreshment",
+    "Diving",
+    "Entrance",
+    "Accessibility/parking",
+    "Link",
+    "Nudist beach",
+    "Video",
+    "Dog swimming",
+]
 
 
 def build_csv_row(**overrides: str) -> list[str]:
@@ -156,6 +180,41 @@ class SwimPlaceParserTests(SimpleTestCase):
         self.assertEqual(row.website_url, "https://example.com/fallback")
         self.assertIsNone(row.dog_swimming)
 
+    def test_parse_swimplace_row_uses_header_mapping_for_reordered_columns(self) -> None:
+        row = parse_swimplace_row(
+            [
+                "202693",
+                "50.2645988464",
+                "14.5424003601",
+                "Mapped place",
+                "Sand quarry",
+                "3.4782608695652173",
+                "https://example.com/image.jpg",
+                "swimplaces:1",
+                "Short description",
+                "Test address",
+                "https://example.com",
+                "",
+                "",
+                "Detailed description",
+                "",
+                "",
+                "",
+                "",
+                "https://example.com/fallback",
+                "",
+                "",
+                "Suitable for dogs",
+            ],
+            header=CSV_UPDATE_HEADER,
+        )
+
+        self.assertIsNotNone(row)
+        assert row is not None
+        self.assertEqual(row.latitude, Decimal("50.264599"))
+        self.assertEqual(row.longitude, Decimal("14.542400"))
+        self.assertEqual(row.name, "Mapped place")
+
     def test_parse_swimplace_row_rejects_invalid_required_values(self) -> None:
         self.assertIsNone(parse_swimplace_row(build_csv_row(MapoticID="")))
         self.assertIsNone(parse_swimplace_row(build_csv_row(Name="")))
@@ -218,6 +277,67 @@ class SwimPlaceImporterTests(TestCase):
         self.assertEqual(summary.skipped, 1)
         self.assertEqual(SwimPlace.objects.count(), 1)
 
+    def test_import_swim_places_detects_pipe_delimiter_and_header_order(self) -> None:
+        source_path = self.write_csv(
+            [
+                [
+                    "1",
+                    "50.2645988464",
+                    "14.5424003601",
+                    "Pipe place",
+                    "Sand quarry",
+                    "3.4782608695652173",
+                    "https://example.com/image.jpg",
+                    "swimplaces:1",
+                    "",
+                    "Test address",
+                    "https://example.com",
+                    "",
+                    "",
+                    "Detailed description",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "https://example.com/fallback",
+                    "",
+                    "",
+                    "Suitable for dogs",
+                ],
+            ],
+            header=CSV_UPDATE_HEADER,
+            delimiter="|",
+        )
+
+        summary = import_swim_places(source_path)
+
+        self.assertEqual(summary.created, 1)
+        place = SwimPlace.objects.get(external_id=1)
+        self.assertEqual(place.latitude, Decimal("50.264599"))
+        self.assertEqual(place.longitude, Decimal("14.542400"))
+
+    def test_import_swim_places_merges_split_update_rows(self) -> None:
+        source_path = self.write_raw_csv(
+            "\n".join(
+                [
+                    "|".join(CSV_UPDATE_HEADER),
+                    "1|50.2645988464|14.5424003601|Split place|Sand quarry|3.4782608695652173|"
+                    "https://example.com/image.jpg|swimplaces:1||||||First part of description",
+                    "second part of description|Restaurant on site|Suitable for diving|No entrance fee|Very close|"
+                    "https://example.com/fallback|Not suitable for nudists||Suitable for dogs",
+                ]
+            )
+        )
+
+        summary = import_swim_places(source_path)
+
+        self.assertEqual(summary.created, 1)
+        self.assertEqual(summary.skipped, 0)
+        place = SwimPlace.objects.get(external_id=1)
+        self.assertEqual(place.description, "First part of description\nsecond part of description")
+        self.assertEqual(place.refreshment, "Restaurant on site")
+        self.assertEqual(place.source_link, "https://example.com/fallback")
+
     def test_import_swim_places_task_imports_source_file(self) -> None:
         source_path = self.write_csv(
             [
@@ -240,12 +360,19 @@ class SwimPlaceImporterTests(TestCase):
         )
         self.assertEqual(SwimPlace.objects.count(), 2)
 
-    def write_csv(self, rows: list[list[str]]) -> Path:
+    def write_csv(self, rows: list[list[str]], header: list[str] | None = None, delimiter: str = ";") -> Path:
         temp_file = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", newline="", suffix=".csv", delete=False)
         with temp_file:
-            writer = csv.writer(temp_file, delimiter=";")
-            writer.writerow(CSV_HEADER)
+            writer = csv.writer(temp_file, delimiter=delimiter)
+            writer.writerow(header or CSV_HEADER)
             writer.writerows(rows)
+
+        return Path(temp_file.name)
+
+    def write_raw_csv(self, content: str) -> Path:
+        temp_file = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", newline="", suffix=".csv", delete=False)
+        with temp_file:
+            temp_file.write(content)
 
         return Path(temp_file.name)
 
