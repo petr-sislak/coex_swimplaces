@@ -99,6 +99,16 @@ class SwimPlaceParserTests(SimpleTestCase):
                 Description="Short description",
                 Description__detail="Detailed description",
                 Rating="4.456",
+                **{
+                    "E-mail": "info@example.com",
+                    "Phone number": "+420 123 456 789",
+                    "Refreshment": "Restaurant on site",
+                    "Diving": "Suitable for diving",
+                    "Entrance": "No entrance fee",
+                    "Accessibility/parking": "Very close",
+                    "Nudist beach": "Not suitable for nudists",
+                    "Video": "https://example.com/video",
+                },
             )
         )
 
@@ -113,6 +123,15 @@ class SwimPlaceParserTests(SimpleTestCase):
         self.assertEqual(row.longitude, Decimal("14.542400"))
         self.assertEqual(row.description, "Short description\n\nDetailed description")
         self.assertEqual(row.website_url, "https://example.com")
+        self.assertEqual(row.email, "info@example.com")
+        self.assertEqual(row.phone_number, "+420 123 456 789")
+        self.assertEqual(row.refreshment, "Restaurant on site")
+        self.assertEqual(row.diving, "Suitable for diving")
+        self.assertEqual(row.entrance, "No entrance fee")
+        self.assertEqual(row.accessibility_parking, "Very close")
+        self.assertEqual(row.source_link, "https://example.com/fallback")
+        self.assertEqual(row.nudist_beach, "Not suitable for nudists")
+        self.assertEqual(row.video_url, "https://example.com/video")
         self.assertIs(row.dog_swimming, True)
 
     def test_parse_swimplace_row_uses_fallbacks_for_optional_values(self) -> None:
@@ -182,6 +201,7 @@ class SwimPlaceImporterTests(TestCase):
         self.assertEqual(second_summary.skipped, 0)
         self.assertEqual(SwimPlace.objects.count(), 2)
         self.assertEqual(SwimPlace.objects.get(external_id=1).name, "Updated name")
+        self.assertEqual(SwimPlace.objects.get(external_id=1).source_link, "https://example.com/fallback")
 
     def test_import_swim_places_counts_skipped_rows(self) -> None:
         source_path = self.write_csv(
@@ -243,6 +263,13 @@ class PlaceListViewTests(TestCase):
         self.assertContains(response, "swimplaces:2")
         self.assertContains(response, "Second place")
 
+    def test_place_list_links_place_names_to_detail(self) -> None:
+        place = create_swim_place(external_id=1, import_id="swimplaces:1", name="Linked place")
+
+        response = self.client.get(reverse("places:place-list"))
+
+        self.assertContains(response, reverse("places:place-detail", args=[place.external_id]))
+
     def test_place_list_filters_places_suitable_for_dogs(self) -> None:
         create_swim_place(external_id=1, import_id="swimplaces:1", name="Dog place", dog_swimming=True)
         create_swim_place(external_id=2, import_id="swimplaces:2", name="No dog place", dog_swimming=False)
@@ -283,6 +310,54 @@ class PlaceListViewTests(TestCase):
         self.assertContains(response, "Filtr nebyl platny")
         self.assertContains(response, "First place")
         self.assertContains(response, "Second place")
+
+
+class PlaceDetailViewTests(TestCase):
+    def test_place_detail_renders_complete_place_data(self) -> None:
+        place = create_swim_place(
+            external_id=1,
+            import_id="swimplaces:1",
+            name="Detailed place",
+            dog_swimming=True,
+        )
+        place.description = "Detailed description"
+        place.image_url = "https://example.com/image.jpg"
+        place.address = "Test address"
+        place.website_url = "https://example.com"
+        place.email = "info@example.com"
+        place.phone_number = "+420 123 456 789"
+        place.refreshment = "Restaurant on site"
+        place.diving = "Suitable for diving"
+        place.entrance = "No entrance fee"
+        place.accessibility_parking = "Very close"
+        place.source_link = "https://example.com/source"
+        place.nudist_beach = "Not suitable for nudists"
+        place.video_url = "https://example.com/video"
+        place.save()
+
+        response = self.client.get(reverse("places:place-detail", args=[place.external_id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Detailed place")
+        self.assertContains(response, "Detailed description")
+        self.assertContains(response, "swimplaces:1")
+        self.assertContains(response, "Test address")
+        self.assertContains(response, "https://example.com")
+        self.assertContains(response, "info@example.com")
+        self.assertContains(response, "+420 123 456 789")
+        self.assertContains(response, "Restaurant on site")
+        self.assertContains(response, "Suitable for diving")
+        self.assertContains(response, "No entrance fee")
+        self.assertContains(response, "Very close")
+        self.assertContains(response, "https://example.com/source")
+        self.assertContains(response, "Not suitable for nudists")
+        self.assertContains(response, "https://example.com/video")
+        self.assertContains(response, "Ano")
+
+    def test_place_detail_returns_404_for_unknown_external_id(self) -> None:
+        response = self.client.get(reverse("places:place-detail", args=[999]))
+
+        self.assertEqual(response.status_code, 404)
 
 
 def create_swim_place(

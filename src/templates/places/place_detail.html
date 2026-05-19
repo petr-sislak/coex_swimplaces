@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}{{ place.name }}{% endblock %}
+
+{% block content %}
+  <div class="mb-4">
+    <a href="{% url 'places:place-list' %}" class="link-secondary">&larr; Zpet na seznam</a>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <h1 class="h3 mb-2">{{ place.name }}</h1>
+      <p class="text-body-secondary mb-4">{{ place.import_id }}</p>
+
+      {% if place.description %}
+        <div class="mb-4">
+          <h2 class="h5">Popis</h2>
+          <p class="mb-0">{{ place.description|linebreaksbr }}</p>
+        </div>
+      {% endif %}
+
+      <h2 class="h5">Data mista</h2>
+      <dl class="row">
+        {% for label, value in detail_fields %}
+          <dt class="col-sm-4">{{ label }}</dt>
+          <dd class="col-sm-8">
+            {% if value %}
+              {% if label == "Web" or label == "Zdrojovy odkaz" or label == "Video" %}
+                <a href="{{ value }}" target="_blank" rel="noopener noreferrer">{{ value }}</a>
+              {% else %}
+                {{ value }}
+              {% endif %}
+            {% else %}
+              <span class="text-body-secondary">-</span>
+            {% endif %}
+          </dd>
+        {% endfor %}
+        <dt class="col-sm-4">Koupani se psem</dt>
+        <dd class="col-sm-8">
+          {% if place.dog_swimming is True %}
+            Ano
+          {% elif place.dog_swimming is False %}
+            Ne
+          {% else %}
+            Bez informace
+          {% endif %}
+        </dd>
+      </dl>
+    </div>
+
+    <div class="col-lg-5">
+      {% if place.image_url %}
+        <img src="{{ place.image_url }}" alt="{{ place.name }}" class="img-fluid rounded border">
+      {% else %}
+        <div class="border rounded p-4 text-center text-body-secondary">Bez obrazku</div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

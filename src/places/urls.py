@@ -9,4 +9,5 @@ app_name = "places"
 
 urlpatterns = [
     path("", views.place_list, name="place-list"),
+    path("places/<int:external_id>/", views.place_detail, name="place-detail"),
 ]
