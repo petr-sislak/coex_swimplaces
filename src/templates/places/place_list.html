@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Mista ke koupani{% endblock %}
+
+{% block content %}
+  <div class="d-flex align-items-end justify-content-between gap-3 mb-4">
+    <div>
+      <h1 class="h3 mb-1">Mista ke koupani</h1>
+      <p class="text-body-secondary mb-0">Interni ID a nazvy importovanych mist.</p>
+    </div>
+
+    <form method="get" class="d-flex align-items-end gap-2">
+      <div>
+        <label for="dog-swimming" class="form-label">Koupani se psem</label>
+        <select id="dog-swimming" name="dog_swimming" class="form-select">
+          {% for value, label in dog_swimming_options %}
+            <option value="{{ value }}"{% if query.dog_swimming == value %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button class="btn btn-primary" type="submit">Filtrovat</button>
+    </form>
+  </div>
+
+  {% if query_errors %}
+    <div class="alert alert-warning" role="alert">
+      Filtr nebyl platny, zobrazuji vsechna mista.
+    </div>
+  {% endif %}
+
+  <div class="table-responsive">
+    <table class="table table-striped table-hover align-middle">
+      <thead>
+        <tr>
+          <th scope="col">Interni ID</th>
+          <th scope="col">Nazev</th>
+          <th scope="col">Kategorie</th>
+          <th scope="col">Hodnoceni</th>
+          <th scope="col">Pes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for place in places %}
+          <tr>
+            <td>{{ place.import_id }}</td>
+            <td>{{ place.name }}</td>
+            <td>{{ place.category }}</td>
+            <td>{% if place.rating is not None %}{{ place.rating }}{% else %}-{% endif %}</td>
+            <td>
+              {% if place.dog_swimming is True %}
+                Ano
+              {% elif place.dog_swimming is False %}
+                Ne
+              {% else %}
+                Bez informace
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="5" class="text-center text-body-secondary py-4">Zadna mista k zobrazeni.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}
