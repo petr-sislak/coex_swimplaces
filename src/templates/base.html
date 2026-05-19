@@ -10,6 +10,10 @@
     <nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom">
       <div class="container">
         <a class="navbar-brand" href="{% url 'places:place-list' %}">Swimplaces</a>
+        <div class="navbar-nav">
+          <a class="nav-link" href="{% url 'places:place-list' %}">Seznam</a>
+          <a class="nav-link" href="{% url 'places:place-statistics' %}">Statistiky</a>
+        </div>
       </div>
     </nav>
 

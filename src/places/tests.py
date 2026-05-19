@@ -8,6 +8,7 @@ from django.urls import reverse
 
 from places.models import SwimPlace
 from places.services.parsers import merge_descriptions, parse_dog_swimming, parse_swimplace_row
+from places.services.statistics import calculate_distance_km, get_swim_place_statistics
 from places.services.swimplace_importer import import_swim_places
 from places.tasks import import_swim_places_task
 
@@ -487,20 +488,81 @@ class PlaceDetailViewTests(TestCase):
         self.assertEqual(response.status_code, 404)
 
 
+class PlaceStatisticsTests(TestCase):
+    def test_calculate_distance_km_returns_zero_for_same_coordinates(self) -> None:
+        distance = calculate_distance_km(50.1055756, 14.4789581, 50.1055756, 14.4789581)
+
+        self.assertEqual(distance, 0)
+
+    def test_get_swim_place_statistics_returns_required_sections(self) -> None:
+        create_swim_place(
+            external_id=1,
+            import_id="swimplaces:1",
+            name="Prague place",
+            category="Lake",
+            rating=Decimal("4.00"),
+            latitude=Decimal("50.100000"),
+            longitude=Decimal("14.400000"),
+        )
+        create_swim_place(
+            external_id=2,
+            import_id="swimplaces:2",
+            name="Sydney place",
+            category="Sea",
+            rating=Decimal("5.00"),
+            latitude=Decimal("-33.868800"),
+            longitude=Decimal("151.209300"),
+        )
+        create_swim_place(
+            external_id=3,
+            import_id="swimplaces:3",
+            name="Second lake",
+            category="Lake",
+            rating=None,
+            latitude=Decimal("49.000000"),
+            longitude=Decimal("14.000000"),
+        )
+
+        statistics = get_swim_place_statistics()
+
+        self.assertEqual(statistics.total_count, 3)
+        self.assertEqual(statistics.category_counts[0].category, "Lake")
+        self.assertEqual(statistics.category_counts[0].count, 2)
+        self.assertEqual(statistics.top_rated_places[0].name, "Sydney place")
+        self.assertEqual(statistics.most_distant_places[0].place.name, "Sydney place")
+
+
+class PlaceStatisticsViewTests(TestCase):
+    def test_place_statistics_renders_statistics(self) -> None:
+        create_swim_place(external_id=1, import_id="swimplaces:1", name="Rated place", category="Lake")
+
+        response = self.client.get(reverse("places:place-statistics"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Statistiky mist")
+        self.assertContains(response, "Pocet mist")
+        self.assertContains(response, "Lake")
+        self.assertContains(response, "Rated place")
+
+
 def create_swim_place(
     *,
     external_id: int,
     import_id: str,
     name: str,
+    category: str = "Lake",
+    rating: Decimal | None = Decimal("4.20"),
+    latitude: Decimal = Decimal("50.000000"),
+    longitude: Decimal = Decimal("14.000000"),
     dog_swimming: bool | None = None,
 ) -> SwimPlace:
     return SwimPlace.objects.create(
         external_id=external_id,
         import_id=import_id,
         name=name,
-        category="Lake",
-        rating=Decimal("4.20"),
-        latitude=Decimal("50.000000"),
-        longitude=Decimal("14.000000"),
+        category=category,
+        rating=rating,
+        latitude=latitude,
+        longitude=longitude,
         dog_swimming=dog_swimming,
     )
