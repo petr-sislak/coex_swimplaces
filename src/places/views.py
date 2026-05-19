@@ -4,7 +4,7 @@ from typing import Any
 
 from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from pydantic import ValidationError
 
 from places.models import SwimPlace
@@ -27,6 +27,38 @@ def place_list(request: HttpRequest) -> HttpResponse:
         ],
     }
     return render(request, "places/place_list.html", context)
+
+
+def place_detail(request: HttpRequest, external_id: int) -> HttpResponse:
+    place = get_object_or_404(SwimPlace, external_id=external_id)
+    detail_fields = [
+        ("Interni ID", place.import_id),
+        ("Mapotic ID", place.external_id),
+        ("Kategorie", place.category),
+        ("Hodnoceni", place.rating),
+        ("Adresa", place.address),
+        ("Web", place.website_url),
+        ("E-mail", place.email),
+        ("Telefon", place.phone_number),
+        ("Obcerstveni", place.refreshment),
+        ("Potapeni", place.diving),
+        ("Vstup", place.entrance),
+        ("Pristupnost / parkovani", place.accessibility_parking),
+        ("Zdrojovy odkaz", place.source_link),
+        ("Nudisticka plaz", place.nudist_beach),
+        ("Video", place.video_url),
+        ("Zemepisna sirka", place.latitude),
+        ("Zemepisna delka", place.longitude),
+    ]
+
+    return render(
+        request,
+        "places/place_detail.html",
+        {
+            "place": place,
+            "detail_fields": detail_fields,
+        },
+    )
 
 
 def parse_place_list_query(request: HttpRequest) -> tuple[PlaceListQuery, list[str]]:

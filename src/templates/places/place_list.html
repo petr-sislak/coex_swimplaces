@@ -43,7 +43,9 @@
         {% for place in places %}
           <tr>
             <td>{{ place.import_id }}</td>
-            <td>{{ place.name }}</td>
+            <td>
+              <a href="{% url 'places:place-detail' place.external_id %}">{{ place.name }}</a>
+            </td>
             <td>{{ place.category }}</td>
             <td>{% if place.rating is not None %}{{ place.rating }}{% else %}-{% endif %}</td>
             <td>

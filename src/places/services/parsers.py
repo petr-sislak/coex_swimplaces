@@ -34,6 +34,15 @@ def parse_swimplace_row(row: list[str]) -> SwimPlaceImportRow | None:
         image_url=clean_text(row[6]),
         address=clean_text(row[9]),
         website_url=clean_text(row[10]) or clean_text(row[18]),
+        email=clean_text(row[11]),
+        phone_number=clean_text(row[12]),
+        refreshment=clean_text(row[14]),
+        diving=clean_text(row[15]),
+        entrance=clean_text(row[16]),
+        accessibility_parking=clean_text(row[17]),
+        source_link=clean_text(row[18]),
+        nudist_beach=clean_text(row[19]),
+        video_url=clean_text(row[20]),
         dog_swimming=parse_dog_swimming(row[21]),
     )
 
