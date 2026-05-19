@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import csv
 from pathlib import Path
-from typing import Iterator
 
 from django.db import transaction
 
@@ -21,8 +20,8 @@ class SwimPlaceImporter:
         skipped = 0
 
         with transaction.atomic():
-            for raw_row in self._iter_rows():
-                row = parse_swimplace_row(raw_row)
+            for header, raw_row in self._iter_rows():
+                row = parse_swimplace_row(raw_row, header=header)
                 if row is None:
                     skipped += 1
                     continue
@@ -38,11 +37,62 @@ class SwimPlaceImporter:
 
         return SwimPlaceImportSummary(created=created, updated=updated, skipped=skipped)
 
-    def _iter_rows(self) -> Iterator[list[str]]:
+    def _iter_rows(self):
         with self.source_path.open(encoding="utf-8-sig", newline="") as csv_file:
-            reader = csv.reader(csv_file, delimiter=";")
-            next(reader, None)
-            yield from reader
+            sample = csv_file.read(4096)
+            csv_file.seek(0)
+            dialect = sniff_csv_dialect(sample)
+            reader = csv.reader(csv_file, dialect)
+            header = next(reader, [])
+            expected_columns = len(header)
+            pending_row: list[str] | None = None
+
+            for row in reader:
+                if not row:
+                    continue
+
+                if len(row) < expected_columns and row[0].isdigit():
+                    if pending_row is not None:
+                        yield header, pending_row
+                    pending_row = row
+                    continue
+
+                if len(row) < expected_columns and pending_row is not None:
+                    pending_row = merge_continuation_row(pending_row, row)
+                    if len(pending_row) >= expected_columns:
+                        yield header, pending_row[:expected_columns]
+                        pending_row = None
+                    continue
+
+                if pending_row is not None:
+                    yield header, pending_row
+
+                pending_row = row
+
+            if pending_row is not None:
+                yield header, pending_row
+
+
+def merge_continuation_row(row: list[str], continuation: list[str]) -> list[str]:
+    if len(row) >= 14:
+        row[13] = "\n".join([row[13], continuation[0]]).strip()
+        return [*row, *continuation[1:]]
+
+    return [*row, *continuation]
+
+
+def sniff_csv_dialect(sample: str) -> csv.Dialect:
+    try:
+        return csv.Sniffer().sniff(sample, delimiters=";|,")
+    except csv.Error:
+        first_line = sample.splitlines()[0] if sample else ""
+        delimiter = max([";", "|", ","], key=first_line.count)
+
+        class FallbackDialect(csv.excel):
+            pass
+
+        FallbackDialect.delimiter = delimiter
+        return FallbackDialect
 
 
 def import_swim_places(source_path: Path) -> SwimPlaceImportSummary:
