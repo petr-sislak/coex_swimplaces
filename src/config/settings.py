@@ -32,8 +32,9 @@ def env_list(name: str, default: list[str] | None = None) -> list[str]:
 
     return [item.strip() for item in value.split(",") if item.strip()]
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+# Project root. Django source code lives in BASE_DIR / "src".
+BASE_DIR = Path(__file__).resolve().parents[2]
+SRC_DIR = BASE_DIR / "src"
 load_dotenv(BASE_DIR / ".env")
 load_dotenv(BASE_DIR / os.environ.get("DJANGO_SECRETS_FILE", ".secrets/local.env"))
 
@@ -77,7 +78,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        'DIRS': [SRC_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
